@@ -35,6 +35,7 @@ export interface SessionUpdateMeta {
   usage?: Usage | null;
   durationMs?: number | null;
   timestamp?: number | null;
+  availableSkills?: string[] | null;
 }
 
 export {
