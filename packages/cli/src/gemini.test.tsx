@@ -471,6 +471,7 @@ describe('gemini.tsx main function kitty protocol', () => {
       appendSystemPrompt: undefined,
       query: undefined,
       yolo: undefined,
+      dangerouslyAllowAll: undefined,
       approvalMode: undefined,
       telemetry: undefined,
       checkpointing: undefined,

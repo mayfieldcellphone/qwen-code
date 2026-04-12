@@ -41,6 +41,8 @@ import {
   ApiCancelEvent,
   isSupportedImageMimeType,
   getUnsupportedImageFormatWarning,
+  matchDangerousPattern,
+  ToolNames,
 } from '@qwen-code/qwen-code-core';
 import { type Part, type PartListUnion, FinishReason } from '@google/genai';
 import type {
@@ -1446,6 +1448,27 @@ export const useGeminiStream = (
           );
         }
 
+        // For YOLO mode, skip shell commands matching dangerous patterns
+        // (code execution, network, system ops) — leave them awaiting approval
+        // unless --dangerously-allow-all is set.
+        if (
+          newApprovalMode === ApprovalMode.YOLO &&
+          !config.getDangerouslyAllowAll?.()
+        ) {
+          awaitingApprovalCalls = awaitingApprovalCalls.filter((call) => {
+            if (call.request.name === ToolNames.SHELL) {
+              const command = call.request.args?.['command'];
+              if (
+                typeof command === 'string' &&
+                matchDangerousPattern(command)
+              ) {
+                return false;
+              }
+            }
+            return true;
+          });
+        }
+
         // Process pending tool calls sequentially to reduce UI chaos
         for (const call of awaitingApprovalCalls) {
           if (call.confirmationDetails?.onConfirm) {
@@ -1463,7 +1486,7 @@ export const useGeminiStream = (
         }
       }
     },
-    [toolCalls],
+    [toolCalls, config],
   );
 
   const handleCompletedTools = useCallback(
