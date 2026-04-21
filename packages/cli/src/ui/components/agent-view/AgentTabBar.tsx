@@ -26,6 +26,10 @@ import {
   useAgentViewActions,
   type RegisteredAgent,
 } from '../../contexts/AgentViewContext.js';
+import {
+  useBackgroundAgentViewState,
+  useBackgroundAgentViewActions,
+} from '../../contexts/BackgroundAgentViewContext.js';
 import { useKeypress } from '../../hooks/useKeypress.js';
 import { useUIState } from '../../contexts/UIStateContext.js';
 import { theme } from '../../semantic-colors.js';
@@ -59,9 +63,16 @@ function statusIndicator(agent: RegisteredAgent): {
 export const AgentTabBar: React.FC = () => {
   const { activeView, agents, agentShellFocused, agentTabBarFocused } =
     useAgentViewState();
-  const { switchToNext, switchToPrevious, setAgentTabBarFocused } =
-    useAgentViewActions();
+  const {
+    switchToNext,
+    switchToPrevious,
+    switchToMain,
+    setAgentTabBarFocused,
+  } = useAgentViewActions();
+  const { entries: bgEntries } = useBackgroundAgentViewState();
+  const { openDialog: openBgDialog } = useBackgroundAgentViewActions();
   const { embeddedShellFocused } = useUIState();
+  const hasBgAgents = bgEntries.length > 0;
 
   useKeypress(
     (key) => {
@@ -74,6 +85,17 @@ export const AgentTabBar: React.FC = () => {
         switchToNext();
       } else if (key.name === 'up') {
         setAgentTabBarFocused(false);
+      } else if (key.name === 'down') {
+        // Down cascades to the Background tasks dialog if any background
+        // agents exist. Switch to main first — DialogManager only mounts
+        // in the main-view branch of DefaultAppLayout, so opening the
+        // dialog while an agent tab is active would leave the user in a
+        // hidden-modal state.
+        if (hasBgAgents) {
+          setAgentTabBarFocused(false);
+          switchToMain();
+          openBgDialog();
+        }
       } else if (
         key.sequence &&
         key.sequence.length === 1 &&

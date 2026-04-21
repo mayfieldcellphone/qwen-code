@@ -155,7 +155,7 @@ describe('runNonInteractive', () => {
       getBackgroundTaskRegistry: vi.fn().mockReturnValue({
         setNotificationCallback: vi.fn(),
         setRegisterCallback: vi.fn(),
-        getRunning: vi.fn().mockReturnValue([]),
+        getAll: vi.fn().mockReturnValue([]),
         hasUnfinalizedAgents: vi.fn().mockReturnValue(false),
         abortAll: vi.fn(),
       }),

@@ -119,6 +119,10 @@ import {
 import { useCodingPlanUpdates } from './hooks/useCodingPlanUpdates.js';
 import { ShellFocusContext } from './contexts/ShellFocusContext.js';
 import { useAgentViewState } from './contexts/AgentViewContext.js';
+import {
+  useBackgroundAgentViewState,
+  useBackgroundAgentViewActions,
+} from './contexts/BackgroundAgentViewContext.js';
 import { t } from '../i18n/index.js';
 import { useWelcomeBack } from './hooks/useWelcomeBack.js';
 import { useDialogClose } from './hooks/useDialogClose.js';
@@ -835,6 +839,8 @@ export const AppContainer = (props: AppContainerProps) => {
   const [hasSuggestionsVisible, setHasSuggestionsVisible] = useState(false);
 
   const agentViewState = useAgentViewState();
+  const { dialogOpen: bgTasksDialogOpen } = useBackgroundAgentViewState();
+  const { closeDialog: closeBgTasksDialog } = useBackgroundAgentViewActions();
 
   // Prompt suggestion state
   const [promptSuggestion, setPromptSuggestion] = useState<string | null>(null);
@@ -1691,6 +1697,8 @@ export const AppContainer = (props: AppContainerProps) => {
     isFolderTrustDialogOpen,
     showWelcomeBackDialog,
     handleWelcomeBackClose,
+    isBackgroundTasksDialogOpen: bgTasksDialogOpen,
+    closeBackgroundTasksDialog: closeBgTasksDialog,
   });
 
   const handleExit = useCallback(
@@ -2009,7 +2017,8 @@ export const AppContainer = (props: AppContainerProps) => {
     isHooksDialogOpen ||
     isApprovalModeDialogOpen ||
     isResumeDialogOpen ||
-    isExtensionsManagerDialogOpen;
+    isExtensionsManagerDialogOpen ||
+    bgTasksDialogOpen;
   dialogsVisibleRef.current = dialogsVisible;
 
   const {

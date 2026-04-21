@@ -1097,8 +1097,24 @@ class AgentToolInvocation extends BaseToolInvocation<AgentParams, ToolResult> {
           startTime: Date.now(),
           abortController: bgAbortController,
           toolUseId: this.callId,
+          prompt: this.params.prompt,
           outputFile: jsonlPath,
         });
+
+        // Subscribe to the subagent's tool-call event stream so the
+        // detail dialog's Progress section reflects live activity. We
+        // capture the unsubscribe fn and call it when the agent
+        // terminates (success, failure, or cancel) to avoid holding the
+        // event emitter after the agent is gone.
+        const bgEmitter = bgSubagent.getCore().getEventEmitter();
+        const onToolCall = (event: AgentToolCallEvent) => {
+          registry.appendActivity(hookOpts.agentId, {
+            name: event.name,
+            description: event.description,
+            at: event.timestamp,
+          });
+        };
+        bgEmitter?.on(AgentEventType.TOOL_CALL, onToolCall);
 
         // Wire external message drain so SendMessage can inject messages
         // into this agent's reasoning loop between tool rounds.
@@ -1175,6 +1191,7 @@ class AgentToolInvocation extends BaseToolInvocation<AgentParams, ToolResult> {
               registry.fail(hookOpts.agentId, errorMsg, getCompletionStats());
             }
           } finally {
+            bgEmitter?.off(AgentEventType.TOOL_CALL, onToolCall);
             cleanupJsonl?.();
           }
         };
