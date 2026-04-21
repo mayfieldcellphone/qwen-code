@@ -761,6 +761,8 @@ export const AppContainer = (props: AppContainerProps) => {
     activePtyId,
     loopDetectionConfirmationRequest,
     pendingToolCalls,
+    streamingResponseLengthRef,
+    isReceivingContent,
   } = useGeminiStream(
     config.getGeminiClient(),
     historyManager.history,
@@ -1230,7 +1232,7 @@ export const AppContainer = (props: AppContainerProps) => {
         setControlsHeight(fullFooterMeasurement.height);
       }
     }
-  }, [buffer, terminalWidth, terminalHeight]);
+  }, [buffer, terminalWidth, terminalHeight, btwItem]);
 
   // agentViewState is declared earlier (before handleFinalSubmit) so it
   // is available for input routing. Referenced here for layout computation.
@@ -1259,11 +1261,14 @@ export const AppContainer = (props: AppContainerProps) => {
   useBracketedPaste();
 
   useAwaySummary({
-    enabled: settings.merged.general?.showSessionRecap ?? true,
+    enabled: settings.merged.general?.showSessionRecap ?? false,
     config,
     isFocused,
     isIdle: streamingState === StreamingState.Idle,
     addItem: historyManager.addItem,
+    history: historyManager.history,
+    awayThresholdMinutes:
+      settings.merged.general?.sessionRecapAwayThresholdMinutes,
   });
 
   // Context file names computation
@@ -2114,6 +2119,9 @@ export const AppContainer = (props: AppContainerProps) => {
       isFeedbackDialogOpen,
       // Per-task token tracking
       taskStartTokens,
+      // Real-time token display
+      streamingResponseLengthRef,
+      isReceivingContent,
       // Prompt suggestion
       promptSuggestion,
       dismissPromptSuggestion,
@@ -2222,6 +2230,9 @@ export const AppContainer = (props: AppContainerProps) => {
       isFeedbackDialogOpen,
       // Per-task token tracking
       taskStartTokens,
+      // Real-time token display
+      streamingResponseLengthRef,
+      isReceivingContent,
       // Prompt suggestion
       promptSuggestion,
       dismissPromptSuggestion,
