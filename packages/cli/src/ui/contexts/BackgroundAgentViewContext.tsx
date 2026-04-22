@@ -46,7 +46,6 @@ export interface BackgroundAgentViewState {
 }
 
 export interface BackgroundAgentViewActions {
-  setSelectedIndex(index: number): void;
   moveSelectionUp(): boolean;
   moveSelectionDown(): boolean;
   openDialog(): void;
@@ -79,7 +78,6 @@ const noop = () => {};
 const noopBool = () => false;
 
 const DEFAULT_ACTIONS: BackgroundAgentViewActions = {
-  setSelectedIndex: noop,
   moveSelectionUp: noopBool,
   moveSelectionDown: noopBool,
   openDialog: noop,
@@ -126,20 +124,11 @@ export function BackgroundAgentViewProvider({
     if (pillFocused && !hasRunning) setPillFocused(false);
   }, [pillFocused, hasRunning]);
 
-  // Single clamp on read — `rawSelectedIndex` can fall out of range when
-  // entries shrink between renders.
+  // rawSelectedIndex can fall out of range when entries shrink; clamp on read.
   const selectedIndex =
     entries.length === 0
       ? 0
       : Math.min(Math.max(0, rawSelectedIndex), entries.length - 1);
-
-  const setSelectedIndex = useCallback(
-    (index: number) => {
-      if (entries.length === 0) return;
-      setRawSelectedIndex(Math.max(0, Math.min(entries.length - 1, index)));
-    },
-    [entries.length],
-  );
 
   const moveSelectionUp = useCallback((): boolean => {
     if (selectedIndex <= 0) return false;
@@ -156,7 +145,6 @@ export function BackgroundAgentViewProvider({
 
   const openDialog = useCallback(() => {
     setDialogMode('list');
-    // Opening the dialog supersedes pill focus — the dialog now owns input.
     setPillFocused(false);
   }, []);
 
@@ -177,12 +165,8 @@ export function BackgroundAgentViewProvider({
     if (!config) return;
     const target = entries[selectedIndex];
     if (!target) return;
-    try {
-      // cancel() is a no-op for non-running entries, so no pre-check here.
-      config.getBackgroundTaskRegistry().cancel(target.agentId);
-    } catch {
-      // Registry unavailable — ignore. The dialog stays open.
-    }
+    // cancel() is a no-op for non-running entries, so no pre-check here.
+    config.getBackgroundTaskRegistry().cancel(target.agentId);
   }, [config, entries, selectedIndex]);
 
   const state: BackgroundAgentViewState = useMemo(
@@ -198,7 +182,6 @@ export function BackgroundAgentViewProvider({
 
   const actions: BackgroundAgentViewActions = useMemo(
     () => ({
-      setSelectedIndex,
       moveSelectionUp,
       moveSelectionDown,
       openDialog,
@@ -209,7 +192,6 @@ export function BackgroundAgentViewProvider({
       setPillFocused,
     }),
     [
-      setSelectedIndex,
       moveSelectionUp,
       moveSelectionDown,
       openDialog,

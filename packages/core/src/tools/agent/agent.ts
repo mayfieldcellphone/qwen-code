@@ -1114,7 +1114,7 @@ class AgentToolInvocation extends BaseToolInvocation<AgentParams, ToolResult> {
             at: event.timestamp,
           });
         };
-        bgEmitter?.on(AgentEventType.TOOL_CALL, onToolCall);
+        bgEmitter.on(AgentEventType.TOOL_CALL, onToolCall);
 
         // Wire external message drain so SendMessage can inject messages
         // into this agent's reasoning loop between tool rounds.
@@ -1191,7 +1191,7 @@ class AgentToolInvocation extends BaseToolInvocation<AgentParams, ToolResult> {
               registry.fail(hookOpts.agentId, errorMsg, getCompletionStats());
             }
           } finally {
-            bgEmitter?.off(AgentEventType.TOOL_CALL, onToolCall);
+            bgEmitter.off(AgentEventType.TOOL_CALL, onToolCall);
             cleanupJsonl?.();
           }
         };

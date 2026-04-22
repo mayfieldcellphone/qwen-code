@@ -6,7 +6,7 @@
 
 import type React from 'react';
 import { useCallback } from 'react';
-import { Box, Text } from 'ink';
+import { Text } from 'ink';
 import {
   useBackgroundAgentViewState,
   useBackgroundAgentViewActions,
@@ -18,7 +18,6 @@ import type { BackgroundAgentEntry } from '@qwen-code/qwen-code-core';
 /** Single source of truth for pluralising the pill label. */
 export function getPillLabel(running: readonly BackgroundAgentEntry[]): string {
   const n = running.length;
-  if (n === 0) return '';
   return n === 1 ? '1 local agent' : `${n} local agents`;
 }
 
@@ -29,7 +28,6 @@ export const BackgroundTasksPill: React.FC = () => {
 
   const onKeypress = useCallback(
     (key: Key) => {
-      if (!pillFocused) return;
       if (key.name === 'return') {
         openDialog();
       } else if (key.name === 'up' || key.name === 'escape') {
@@ -43,17 +41,17 @@ export const BackgroundTasksPill: React.FC = () => {
         setPillFocused(false);
       }
     },
-    [pillFocused, openDialog, setPillFocused],
+    [openDialog, setPillFocused],
   );
 
-  useKeypress(onKeypress, { isActive: true });
+  useKeypress(onKeypress, { isActive: pillFocused });
 
   if (running.length === 0) return null;
 
   const label = getPillLabel(running);
 
   return (
-    <Box flexDirection="row">
+    <>
       <Text color={theme.text.secondary}> · </Text>
       <Text
         color={pillFocused ? theme.text.primary : theme.text.accent}
@@ -65,6 +63,6 @@ export const BackgroundTasksPill: React.FC = () => {
       {!pillFocused && (
         <Text color={theme.text.secondary}>{' · ↓ to view'}</Text>
       )}
-    </Box>
+    </>
   );
 };

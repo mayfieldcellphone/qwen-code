@@ -1035,7 +1035,7 @@ export class AgentCore {
 
   // ─── Stats & Events ───────────────────────────────────────
 
-  getEventEmitter(): AgentEventEmitter | undefined {
+  getEventEmitter(): AgentEventEmitter {
     return this.eventEmitter;
   }
 

@@ -35,16 +35,12 @@ export function useBackgroundAgentView(
     if (!config) return;
     const registry = config.getBackgroundTaskRegistry();
 
-    setEntries(sortEntries(registry.getAll()));
+    // getAll() returns entries in registration order, which is startTime
+    // order — no sort needed.
+    setEntries(registry.getAll());
 
-    // Every statusChange callback rebuilds the entries array. The registry
-    // mutates entries in place (e.g. finalizeCancelled attaches final stats
-    // while keeping status='cancelled'), so a dedupe keyed on status alone
-    // would drop those follow-up updates and leave open detail views stale.
-    // Status-change events are infrequent enough (register/complete/fail/
-    // cancel/finalize) that skipping dedupe costs nothing.
     const onStatusChange = () => {
-      setEntries(sortEntries(registry.getAll()));
+      setEntries(registry.getAll());
     };
 
     registry.setStatusChangeCallback(onStatusChange);
@@ -55,8 +51,4 @@ export function useBackgroundAgentView(
   }, [config]);
 
   return { entries };
-}
-
-function sortEntries(entries: BackgroundAgentEntry[]): BackgroundAgentEntry[] {
-  return [...entries].sort((a, b) => a.startTime - b.startTime);
 }

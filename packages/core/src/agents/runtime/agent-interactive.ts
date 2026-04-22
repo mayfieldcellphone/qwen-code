@@ -287,7 +287,7 @@ export class AgentInteractive {
     return this.core;
   }
 
-  getEventEmitter(): AgentEventEmitter | undefined {
+  getEventEmitter(): AgentEventEmitter {
     return this.core.getEventEmitter();
   }
 

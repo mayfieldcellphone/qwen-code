@@ -27,19 +27,18 @@ import {
 } from '@qwen-code/qwen-code-core';
 import { formatDuration, formatTokenCount } from '../../utils/formatters.js';
 
+const STATUS_LABELS: Record<
+  BackgroundAgentEntry['status'],
+  { suffix: string; verb: string }
+> = {
+  running: { suffix: '(running)', verb: 'Running' },
+  completed: { suffix: '(done)', verb: 'Completed' },
+  failed: { suffix: '(failed)', verb: 'Failed' },
+  cancelled: { suffix: '(stopped)', verb: 'Stopped' },
+};
+
 function statusSuffix(entry: BackgroundAgentEntry): string {
-  switch (entry.status) {
-    case 'running':
-      return '(running)';
-    case 'completed':
-      return '(done)';
-    case 'failed':
-      return '(failed)';
-    case 'cancelled':
-      return '(stopped)';
-    default:
-      return '';
-  }
+  return STATUS_LABELS[entry.status]?.suffix ?? '';
 }
 
 function rowLabel(entry: BackgroundAgentEntry): string {
@@ -119,13 +118,7 @@ const DetailBody: React.FC<{
 
   const subtitleParts: string[] = [];
   if (entry.status !== 'running') {
-    subtitleParts.push(
-      entry.status === 'completed'
-        ? 'Completed'
-        : entry.status === 'failed'
-          ? 'Failed'
-          : 'Stopped',
-    );
+    subtitleParts.push(STATUS_LABELS[entry.status].verb);
   }
   subtitleParts.push(elapsedFor(entry));
   if (entry.stats?.totalTokens) {
@@ -253,13 +246,17 @@ export const BackgroundTasksDialog: React.FC<BackgroundTasksDialogProps> = ({
   // activity updates so the Footer pill and AppContainer don't re-run
   // on every tool call a background agent makes.
   const [, bumpActivity] = useState(0);
+  const selectedAgentId = selectedEntry?.agentId;
   useEffect(() => {
-    if (!dialogOpen || dialogMode !== 'detail') return;
+    if (!dialogOpen || dialogMode !== 'detail' || !selectedAgentId) return;
     const registry = config.getBackgroundTaskRegistry();
-    const onActivity = () => bumpActivity((n) => n + 1);
+    const onActivity = (entry: BackgroundAgentEntry) => {
+      if (entry.agentId !== selectedAgentId) return;
+      bumpActivity((n) => n + 1);
+    };
     registry.setActivityChangeCallback(onActivity);
     return () => registry.setActivityChangeCallback(undefined);
-  }, [dialogOpen, dialogMode, config]);
+  }, [dialogOpen, dialogMode, config, selectedAgentId]);
 
   useKeypress(
     (key) => {

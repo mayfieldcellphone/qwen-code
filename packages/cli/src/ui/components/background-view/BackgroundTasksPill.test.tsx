@@ -20,10 +20,6 @@ function entry(overrides: Partial<BackgroundAgentEntry>): BackgroundAgentEntry {
 }
 
 describe('getPillLabel', () => {
-  it('returns empty string for no running entries', () => {
-    expect(getPillLabel([])).toBe('');
-  });
-
   it('uses singular form for one running agent', () => {
     expect(getPillLabel([entry({ agentId: 'a' })])).toBe('1 local agent');
   });
