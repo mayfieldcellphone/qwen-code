@@ -56,7 +56,8 @@ function elapsedFor(entry: BackgroundAgentEntry): string {
 const ListBody: React.FC<{
   entries: readonly BackgroundAgentEntry[];
   selectedIndex: number;
-}> = ({ entries, selectedIndex }) => {
+  maxRows: number;
+}> = ({ entries, selectedIndex, maxRows }) => {
   if (entries.length === 0) {
     return (
       <Box paddingX={1}>
@@ -66,6 +67,28 @@ const ListBody: React.FC<{
   }
 
   const running = entries.filter((e) => e.status === 'running').length;
+
+  // Window entries around selectedIndex. When the list fits, show
+  // everything; otherwise centre the selection and clamp to the ends.
+  // "+N more above/below" lines consume one row each on the respective
+  // side, so subtract them from the available row budget.
+  const fits = entries.length <= maxRows;
+  const effectiveRows = Math.max(1, fits ? maxRows : maxRows - 2);
+  const windowStart = fits
+    ? 0
+    : Math.max(
+        0,
+        Math.min(
+          selectedIndex - Math.floor(effectiveRows / 2),
+          entries.length - effectiveRows,
+        ),
+      );
+  const windowEnd = fits
+    ? entries.length
+    : Math.min(entries.length, windowStart + effectiveRows);
+  const hiddenAbove = windowStart;
+  const hiddenBelow = entries.length - windowEnd;
+  const visible = entries.slice(windowStart, windowEnd);
 
   return (
     <Box flexDirection="column">
@@ -79,7 +102,15 @@ const ListBody: React.FC<{
           <Text bold>Local agents</Text>
           <Text color={theme.text.secondary}> ({entries.length})</Text>
         </Box>
-        {entries.map((entry, idx) => {
+        {hiddenAbove > 0 && (
+          <Box paddingX={1}>
+            <Text color={theme.text.secondary}>
+              {`  \u2191 ${hiddenAbove} more above`}
+            </Text>
+          </Box>
+        )}
+        {visible.map((entry, visibleIdx) => {
+          const idx = windowStart + visibleIdx;
           const isSelected = idx === selectedIndex;
           return (
             <Box key={entry.agentId} flexDirection="row" paddingX={1}>
@@ -102,6 +133,13 @@ const ListBody: React.FC<{
             </Box>
           );
         })}
+        {hiddenBelow > 0 && (
+          <Box paddingX={1}>
+            <Text color={theme.text.secondary}>
+              {`  \u2193 ${hiddenBelow} more below`}
+            </Text>
+          </Box>
+        )}
       </Box>
     </Box>
   );
@@ -235,6 +273,11 @@ export const BackgroundTasksDialog: React.FC<BackgroundTasksDialogProps> = ({
   // Rounded border + paddingX=1 on the outer Box ≈ 4 horizontal cells.
   const detailContentWidth = Math.max(10, terminalWidth - 4);
 
+  // List mode row budget: terminal height minus chrome (border 2 + title 1
+  // + two marginTops 2 + hint 1) and list header ("N active agents" 1 +
+  // marginTop 1 + "Local agents (N)" 1) = 10.
+  const listMaxRows = Math.max(3, availableTerminalHeight - 10);
+
   const selectedEntry = useMemo(
     () => entries[selectedIndex] ?? null,
     [entries, selectedIndex],
@@ -340,7 +383,11 @@ export const BackgroundTasksDialog: React.FC<BackgroundTasksDialogProps> = ({
       </Box>
       <Box marginTop={1}>
         {dialogMode === 'list' ? (
-          <ListBody entries={entries} selectedIndex={selectedIndex} />
+          <ListBody
+            entries={entries}
+            selectedIndex={selectedIndex}
+            maxRows={listMaxRows}
+          />
         ) : selectedEntry ? (
           <DetailBody
             entry={selectedEntry}

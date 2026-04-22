@@ -72,7 +72,10 @@ export const AgentTabBar: React.FC = () => {
   const { entries: bgEntries } = useBackgroundAgentViewState();
   const { setPillFocused: setBgPillFocused } = useBackgroundAgentViewActions();
   const { embeddedShellFocused } = useUIState();
-  const hasBgAgents = bgEntries.length > 0;
+  // Gate on running entries only — the footer pill hides once nothing
+  // is running, so targeting it based on historical entries would strand
+  // focus on an invisible surface.
+  const hasRunningBgAgents = bgEntries.some((e) => e.status === 'running');
 
   useKeypress(
     (key) => {
@@ -87,10 +90,10 @@ export const AgentTabBar: React.FC = () => {
         setAgentTabBarFocused(false);
       } else if (key.name === 'down') {
         // Down cascades to the Background tasks pill if any background
-        // agents exist. Switch to main first — the footer pill only
+        // agents are running. Switch to main first — the footer pill only
         // renders under the main view, so focusing it from an agent tab
         // would strand focus on an offscreen surface.
-        if (hasBgAgents) {
+        if (hasRunningBgAgents) {
           setAgentTabBarFocused(false);
           switchToMain();
           setBgPillFocused(true);

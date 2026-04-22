@@ -5,17 +5,12 @@
  */
 
 /**
- * Arena wrapper around AgentChatContent. Owns the Ctrl+F embedded-shell
- * focus toggle and resolves the selected agent from AgentViewContext.
+ * Arena wrapper around AgentChatContent. Resolves the selected agent
+ * from AgentViewContext; the content component owns live-state reads
+ * and the Ctrl+F embedded-shell toggle.
  */
 
-import { useState, useEffect } from 'react';
-import { AgentStatus } from '@qwen-code/qwen-code-core';
-import {
-  useAgentViewState,
-  useAgentViewActions,
-} from '../../contexts/AgentViewContext.js';
-import { useKeypress } from '../../hooks/useKeypress.js';
+import { useAgentViewState } from '../../contexts/AgentViewContext.js';
 import { AgentChatContent, AgentChatMissing } from './AgentChatContent.js';
 
 interface AgentChatViewProps {
@@ -24,49 +19,10 @@ interface AgentChatViewProps {
 
 export const AgentChatView = ({ agentId }: AgentChatViewProps) => {
   const { agents } = useAgentViewState();
-  const { setAgentShellFocused } = useAgentViewActions();
   const agent = agents.get(agentId);
 
   const interactiveAgent = agent?.interactiveAgent;
   const core = interactiveAgent?.getCore();
-  const status = interactiveAgent?.getStatus() ?? AgentStatus.INITIALIZING;
-  const shellPids = interactiveAgent?.getShellPids();
-  const executionStartTimes = interactiveAgent?.getExecutionStartTimes();
-
-  // Derive the active PTY PID: first shell PID among currently-executing tools.
-  // Resets naturally to undefined when the tool finishes (shellPids cleared).
-  const activePtyId =
-    shellPids && shellPids.size > 0
-      ? (shellPids.values().next().value as number | undefined)
-      : undefined;
-
-  // Track whether the user has toggled input focus into the embedded shell.
-  // Mirrors the main agent's embeddedShellFocused in AppContainer.
-  const [embeddedShellFocused, setEmbeddedShellFocusedLocal] = useState(false);
-
-  // Sync to AgentViewContext so AgentTabBar can suppress arrow-key navigation
-  // when an agent's embedded shell is focused.
-  useEffect(() => {
-    setAgentShellFocused(embeddedShellFocused);
-    return () => setAgentShellFocused(false);
-  }, [embeddedShellFocused, setAgentShellFocused]);
-
-  // Reset focus when the shell exits (activePtyId disappears).
-  useEffect(() => {
-    if (!activePtyId) setEmbeddedShellFocusedLocal(false);
-  }, [activePtyId]);
-
-  // Ctrl+F: toggle shell input focus when a PTY is active.
-  useKeypress(
-    (key) => {
-      if (key.ctrl && key.name === 'f') {
-        if (activePtyId || embeddedShellFocused) {
-          setEmbeddedShellFocusedLocal((prev) => !prev);
-        }
-      }
-    },
-    { isActive: true },
-  );
 
   if (!agent || !interactiveAgent || !core) {
     return <AgentChatMissing label={`Agent "${agentId}" not found.`} />;
@@ -75,12 +31,9 @@ export const AgentChatView = ({ agentId }: AgentChatViewProps) => {
   return (
     <AgentChatContent
       core={core}
-      status={status}
+      interactiveAgent={interactiveAgent}
       instanceKey={agentId}
       modelName={agent.modelName}
-      activePtyId={activePtyId ?? null}
-      embeddedShellFocused={embeddedShellFocused}
-      executionStartTimes={executionStartTimes}
     />
   );
 };

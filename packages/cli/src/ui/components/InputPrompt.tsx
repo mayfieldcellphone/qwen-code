@@ -135,7 +135,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
   } = useBackgroundAgentViewState();
   const { setPillFocused: setBgPillFocused } = useBackgroundAgentViewActions();
   const hasAgents = agents.size > 0;
-  const hasBgAgents = bgEntries.length > 0;
+  const hasRunningBgAgents = bgEntries.some((e) => e.status === 'running');
   const [justNavigatedHistory, setJustNavigatedHistory] = useState(false);
   const [escPressCount, setEscPressCount] = useState(0);
   const [showEscapePrompt, setShowEscapePrompt] = useState(false);
@@ -928,7 +928,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
             setAgentTabBarFocused(true);
             return true;
           }
-          if (hasBgAgents) {
+          if (hasRunningBgAgents) {
             setBgPillFocused(true);
             return true;
           }
@@ -1098,7 +1098,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
       bgDialogOpen,
       bgPillFocused,
       hasAgents,
-      hasBgAgents,
+      hasRunningBgAgents,
       setAgentTabBarFocused,
       setBgPillFocused,
       followup,

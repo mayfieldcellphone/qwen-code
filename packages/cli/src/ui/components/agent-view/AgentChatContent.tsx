@@ -17,10 +17,13 @@ import {
   AgentEventType,
   getGitBranch,
   type AgentCore,
+  type AgentInteractive,
   type AgentStatusChangeEvent,
 } from '@qwen-code/qwen-code-core';
 import { useUIState } from '../../contexts/UIStateContext.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
+import { useKeypress } from '../../hooks/useKeypress.js';
+import { useAgentViewActions } from '../../contexts/AgentViewContext.js';
 import { HistoryItemDisplay } from '../HistoryItemDisplay.js';
 import { ToolCallStatus } from '../../types.js';
 import { theme } from '../../semantic-colors.js';
@@ -31,47 +34,28 @@ import { AgentHeader } from './AgentHeader.js';
 export interface AgentChatContentProps {
   /** The agent's AgentCore — the source of truth for transcript state. */
   core: AgentCore;
-  /** The agent's current lifecycle status (drives the spinner). */
-  status: AgentStatus;
+  /**
+   * The InteractiveAgent wrapper, if any. Present for live arena tabs;
+   * omit for read-only transcript surfaces. When provided, drives the
+   * spinner and the embedded-shell affordance — all reads happen inside
+   * this component, which re-renders on the relevant events, so state
+   * stays fresh without plumbing props from an ancestor that doesn't
+   * subscribe.
+   */
+  interactiveAgent?: AgentInteractive | null;
   /** Stable identifier used for memo keys and the Static remount key. */
   instanceKey: string;
   /** Optional display name shown in the header. */
   modelName?: string;
-  /**
-   * Active PTY PID for the embedded shell, if any. Only meaningful for
-   * Arena (interactive) agents. Pass `null`/omit for read-only surfaces.
-   */
-  activePtyId?: number | null;
-  /**
-   * Whether the embedded shell currently has keyboard focus. Only
-   * meaningful for Arena agents. Pass `false`/omit for read-only surfaces.
-   */
-  embeddedShellFocused?: boolean;
-  /**
-   * When true, tool groups in the live area render without the
-   * activePtyId/embeddedShellFocused props so no interactive shell
-   * affordance appears. Defaults to `false`.
-   */
-  readonly?: boolean;
-  /**
-   * Per-tool wall-clock start timestamps used by the elapsed-time
-   * indicator. Lives on InteractiveAgent (not AgentCore), so it's
-   * passed in explicitly. Omit for read-only surfaces with no live
-   * timing.
-   */
-  executionStartTimes?: ReadonlyMap<string, number>;
 }
 
 export const AgentChatContent = ({
   core,
-  status,
+  interactiveAgent,
   instanceKey,
   modelName,
-  activePtyId,
-  embeddedShellFocused,
-  readonly = false,
-  executionStartTimes,
 }: AgentChatContentProps) => {
+  const readonly = !interactiveAgent;
   const uiState = useUIState();
   const { historyRemountKey, availableTerminalHeight, constrainHeight } =
     uiState;
@@ -90,7 +74,6 @@ export const AgentChatContent = ({
 
   useEffect(() => {
     const emitter = core.getEventEmitter();
-    if (!emitter) return;
 
     const onStatusChange = (_event: AgentStatusChangeEvent) => forceRender();
     const onToolCall = () => forceRender();
@@ -123,8 +106,47 @@ export const AgentChatContent = ({
   const pendingApprovals = core.getPendingApprovals();
   const liveOutputs = core.getLiveOutputs();
   const shellPids = core.getShellPids();
+
+  // Read status/PTY/timing state fresh on every render — this component
+  // re-renders on STATUS_CHANGE/TOOL_CALL/TOOL_OUTPUT_UPDATE so the reads
+  // stay current without prop plumbing from a non-subscribed ancestor.
+  const status = interactiveAgent?.getStatus() ?? AgentStatus.COMPLETED;
+  const executionStartTimes = interactiveAgent?.getExecutionStartTimes();
+  const activePtyId =
+    shellPids.size > 0
+      ? ((shellPids.values().next().value as number | undefined) ?? null)
+      : null;
   const isRunning =
     status === AgentStatus.RUNNING || status === AgentStatus.INITIALIZING;
+
+  // Embedded-shell focus (Ctrl+F toggle). Lives here so the auto-reset
+  // effect sees a fresh activePtyId — AgentChatView above us doesn't
+  // subscribe to agent events, so driving this from there would leave
+  // focus stuck on a terminated PTY.
+  const [embeddedShellFocused, setEmbeddedShellFocused] = useState(false);
+  const { setAgentShellFocused } = useAgentViewActions();
+
+  useEffect(() => {
+    if (readonly) return;
+    setAgentShellFocused(embeddedShellFocused);
+    return () => setAgentShellFocused(false);
+  }, [embeddedShellFocused, readonly, setAgentShellFocused]);
+
+  useEffect(() => {
+    if (!activePtyId) setEmbeddedShellFocused(false);
+  }, [activePtyId]);
+
+  useKeypress(
+    (key) => {
+      if (readonly) return;
+      if (key.ctrl && key.name === 'f') {
+        if (activePtyId || embeddedShellFocused) {
+          setEmbeddedShellFocused((prev) => !prev);
+        }
+      }
+    },
+    { isActive: !readonly },
+  );
 
   // tickRef.current in deps ensures we rebuild when events fire even if
   // messages.length and pendingApprovals.size haven't changed (e.g. a
@@ -184,13 +206,6 @@ export const AgentChatContent = ({
 
   const agentModelId = core.modelConfig.model ?? '';
 
-  // readonly surfaces never expose the embedded shell; pass undefined
-  // so HistoryItemDisplay doesn't render shell-input affordances.
-  const renderedActivePtyId = readonly ? null : (activePtyId ?? null);
-  const renderedEmbeddedShellFocused = readonly
-    ? false
-    : (embeddedShellFocused ?? false);
-
   return (
     <Box flexDirection="column">
       {/* Committed message history.
@@ -234,8 +249,8 @@ export const AgentChatContent = ({
             constrainHeight ? availableTerminalHeight : undefined
           }
           isFocused={!readonly}
-          activeShellPtyId={renderedActivePtyId}
-          embeddedShellFocused={renderedEmbeddedShellFocused}
+          activeShellPtyId={activePtyId}
+          embeddedShellFocused={embeddedShellFocused}
         />
       ))}
 
