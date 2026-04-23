@@ -53,16 +53,7 @@ export const BackgroundTasksPill: React.FC = () => {
   return (
     <>
       <Text color={theme.text.secondary}> · </Text>
-      <Text
-        color={pillFocused ? theme.text.primary : theme.text.accent}
-        backgroundColor={pillFocused ? theme.border.default : undefined}
-        bold
-      >
-        {pillFocused ? ` ${label} ` : label}
-      </Text>
-      {!pillFocused && (
-        <Text color={theme.text.secondary}>{' · ↓ to view'}</Text>
-      )}
+      <Text inverse={pillFocused}>{label}</Text>
     </>
   );
 };

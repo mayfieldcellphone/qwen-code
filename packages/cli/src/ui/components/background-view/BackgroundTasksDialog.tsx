@@ -27,19 +27,12 @@ import {
 } from '@qwen-code/qwen-code-core';
 import { formatDuration, formatTokenCount } from '../../utils/formatters.js';
 
-const STATUS_LABELS: Record<
-  BackgroundAgentEntry['status'],
-  { suffix: string; verb: string }
-> = {
-  running: { suffix: '(running)', verb: 'Running' },
-  completed: { suffix: '(done)', verb: 'Completed' },
-  failed: { suffix: '(failed)', verb: 'Failed' },
-  cancelled: { suffix: '(stopped)', verb: 'Stopped' },
+const STATUS_VERBS: Record<BackgroundAgentEntry['status'], string> = {
+  running: 'Running',
+  completed: 'Completed',
+  failed: 'Failed',
+  cancelled: 'Stopped',
 };
-
-function statusSuffix(entry: BackgroundAgentEntry): string {
-  return STATUS_LABELS[entry.status]?.suffix ?? '';
-}
 
 function rowLabel(entry: BackgroundAgentEntry): string {
   return buildBackgroundEntryLabel(entry, { includePrefix: false });
@@ -112,24 +105,17 @@ const ListBody: React.FC<{
         {visible.map((entry, visibleIdx) => {
           const idx = windowStart + visibleIdx;
           const isSelected = idx === selectedIndex;
+          const labelColor = isSelected
+            ? theme.text.accent
+            : entry.status === 'running'
+              ? theme.text.primary
+              : theme.text.secondary;
           return (
             <Box key={entry.agentId} flexDirection="row" paddingX={1}>
-              <Box width={2}>
-                <Text color={isSelected ? theme.border.focused : undefined}>
-                  {isSelected ? '\u203A ' : '  '}
-                </Text>
-              </Box>
-              <Text
-                color={
-                  entry.status === 'running'
-                    ? theme.text.primary
-                    : theme.text.secondary
-                }
-                bold={isSelected}
-              >
-                {rowLabel(entry)}
+              <Text color={isSelected ? theme.text.accent : undefined}>
+                {isSelected ? '\u276F ' : '  '}
               </Text>
-              <Text color={theme.text.secondary}> {statusSuffix(entry)}</Text>
+              <Text color={labelColor}>{rowLabel(entry)}</Text>
             </Box>
           );
         })}
@@ -156,7 +142,7 @@ const DetailBody: React.FC<{
 
   const subtitleParts: string[] = [];
   if (entry.status !== 'running') {
-    subtitleParts.push(STATUS_LABELS[entry.status].verb);
+    subtitleParts.push(STATUS_VERBS[entry.status]);
   }
   subtitleParts.push(elapsedFor(entry));
   if (entry.stats?.totalTokens) {
@@ -168,6 +154,8 @@ const DetailBody: React.FC<{
     );
   }
 
+  // Registry stores activities newest-last; render newest-first so that
+  // MaxSizedBox's bottom overflow truncates stale rows, not the live one.
   const activities = (entry.recentActivities ?? []).slice().reverse();
   const hasError = entry.status === 'failed' && Boolean(entry.error);
 
@@ -178,9 +166,7 @@ const DetailBody: React.FC<{
       overflowDirection="bottom"
     >
       <Box>
-        <Text bold color={theme.text.accent}>
-          {title}
-        </Text>
+        <Text>{title}</Text>
       </Box>
       <Box>
         <Text color={theme.text.secondary}>
@@ -192,19 +178,23 @@ const DetailBody: React.FC<{
         <Fragment>
           <Box />
           <Box>
-            <Text bold>Progress</Text>
+            <Text bold dimColor>
+              Progress
+            </Text>
           </Box>
-          {activities.map((a, i) => (
-            <Box key={`${a.at}-${i}`}>
-              <Text color={theme.text.secondary}>
-                {i === 0 ? '\u203A ' : '  '}
-              </Text>
-              <Text>{a.name}</Text>
-              {a.description ? (
-                <Text color={theme.text.secondary}> {a.description}</Text>
-              ) : null}
-            </Box>
-          ))}
+          {activities.map((a, i) => {
+            const isFirst = i === 0;
+            const descSuffix = a.description ? ` ${a.description}` : '';
+            return (
+              <Box key={`${a.at}-${i}`}>
+                <Text dimColor={!isFirst} wrap="truncate-end">
+                  {isFirst ? '\u276F ' : '  '}
+                  {a.name}
+                  {descSuffix}
+                </Text>
+              </Box>
+            );
+          })}
         </Fragment>
       )}
 
@@ -212,7 +202,9 @@ const DetailBody: React.FC<{
         <Fragment>
           <Box />
           <Box>
-            <Text bold>Prompt</Text>
+            <Text bold dimColor>
+              Prompt
+            </Text>
           </Box>
           <Box>
             <Text wrap="wrap">{entry.prompt}</Text>
