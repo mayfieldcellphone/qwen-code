@@ -46,6 +46,7 @@ import { SessionPicker } from './SessionPicker.js';
 import { MemoryDialog } from './MemoryDialog.js';
 import { BackgroundTasksDialog } from './background-view/BackgroundTasksDialog.js';
 import { useBackgroundAgentViewState } from '../contexts/BackgroundAgentViewContext.js';
+import { t } from '../../i18n/index.js';
 
 interface DialogManagerProps {
   addItem: UseHistoryManagerReturn['addItem'];
@@ -382,6 +383,19 @@ export const DialogManager = ({
         currentBranch={uiState.branchName}
         onSelect={uiActions.handleResume}
         onCancel={uiActions.closeResumeDialog}
+        initialSessions={uiState.resumeMatchedSessions}
+      />
+    );
+  }
+
+  if (uiState.isDeleteDialogOpen) {
+    return (
+      <SessionPicker
+        sessionService={config.getSessionService()}
+        currentBranch={uiState.branchName}
+        onSelect={uiActions.handleDelete}
+        onCancel={uiActions.closeDeleteDialog}
+        title={t('Delete Session')}
       />
     );
   }
