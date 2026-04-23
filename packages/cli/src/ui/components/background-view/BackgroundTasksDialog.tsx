@@ -214,7 +214,9 @@ const DetailBody: React.FC<{
       overflowDirection="bottom"
     >
       <Box>
-        <Text>{title}</Text>
+        <Text bold color={theme.text.accent}>
+          {title}
+        </Text>
       </Box>
       <Box>
         {terminal && (
@@ -238,13 +240,18 @@ const DetailBody: React.FC<{
           {activities.map((a, i) => {
             const isFirst = i === 0;
             const descSuffix = a.description ? ` ${a.description}` : '';
+            // `\u203A` is a single-cell glyph in all terminals; the heavier
+            // `\u276F` can render as 2 cells in some fonts, which collapses
+            // the trailing separator space and misaligns rows against the
+            // two-space history indent.
+            const prefix = isFirst ? '\u203A  ' : '   ';
             return (
               <Box key={`${a.at}-${i}`}>
                 <Text
                   color={isFirst ? theme.text.primary : theme.text.secondary}
                   wrap="truncate-end"
                 >
-                  {isFirst ? '\u276F ' : '  '}
+                  {prefix}
                   {a.name}
                   {descSuffix}
                 </Text>
